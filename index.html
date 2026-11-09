@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BelRose Place - Key Management</title>
+    
+    <!-- PWA Meta Tags for iOS & Android -->
+    <meta name="theme-color" content="#172554">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="BelRose Keys">
+    <link rel="apple-touch-icon" href="https://placehold.co/192x192/172554/f59e0b?text=BR">
+    <!-- Dynamic Manifest Placeholder -->
+    <link id="manifest-placeholder" rel="manifest">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- PDF Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
+        .toast-enter { transform: translateY(100%); opacity: 0; }
+        .toast-enter-active { transform: translateY(0); opacity: 1; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .toast-exit { transform: translateY(0); opacity: 1; }
+        .toast-exit-active { transform: translateY(100%); opacity: 0; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        
+        /* Custom Scrollbar for tables/lists */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        .modal-open { overflow: hidden; }
+    </style>
+</head>
+<body class="text-slate-800 antialiased h-screen flex flex-col md:flex-row overflow-hidden bg-slate-100">
+
+    <!-- Sidebar / Top Nav -->
+    <aside class="w-full md:w-72 bg-blue-950 text-white flex flex-col shadow-xl z-20 flex-shrink-0 md:h-screen transition-all">
+        <div class="p-3 md:p-6 border-b border-blue-900 flex flex-row md:flex-col items-center justify-between md:justify-center gap-3 md:gap-0">
+            <div class="flex items-center justify-center md:mb-4 shrink-0">
+                <!-- REPLACE 'src' WITH YOUR SECURITY COMPANY LOGO URL -->
+                <img src="logo.jpeg" alt="DKB Anchor Security Logo" class="h-10 md:h-20 w-auto object-contain drop-shadow-md rounded">
+            </div>
+            <h1 class="text-sm md:text-lg font-bold tracking-tight leading-snug text-left md:text-center text-amber-500 flex-1 md:flex-none">DKB Anchor Security<span class="hidden md:inline"> Services Ltd</span></h1>
+        </div>
+        
+        <div class="flex flex-col flex-1 overflow-hidden">
+            <nav class="flex-row md:flex-col flex p-2 md:p-4 gap-2 md:space-y-2 overflow-x-auto custom-scrollbar">
+                <button id="btnOpenLogModal" class="flex-1 md:w-full flex items-center justify-center md:justify-start gap-2 md:gap-3 px-3 md:px-4 py-2.5 md:py-3 bg-amber-500 hover:bg-amber-400 text-blue-950 rounded-lg transition-colors font-bold shadow-sm text-sm md:text-base whitespace-nowrap">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    LOG KEY
+                </button>
+                <button id="btnOpenTableModal" class="flex-1 md:w-full flex items-center justify-center md:justify-start gap-2 md:gap-3 px-3 md:px-4 py-2.5 md:py-3 bg-blue-900 hover:bg-blue-800 text-amber-500 border border-blue-800 rounded-lg transition-colors font-bold text-sm md:text-base whitespace-nowrap">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                    </svg>
+                    VIEW TABLE
+                </button>
+                <button id="btnInstallApp" class="hidden flex-1 md:w-full flex items-center justify-center md:justify-start gap-2 md:gap-3 px-3 md:px-4 py-2.5 md:py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors font-bold text-sm md:text-base whitespace-nowrap mt-auto">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    INSTALL APP
+                </button>
+            </nav>
+            
+            <div class="hidden md:block p-4 border-t border-blue-900 mt-auto">
+                <div id="connectionStatus" class="flex items-center gap-2 text-xs text-amber-400 bg-amber-400/10 px-3 py-2 rounded-lg">
+                    <div class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></div>
+                    Connecting to Database...
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content Dashboard -->
+    <main class="flex-1 relative p-4 md:p-8 flex flex-col items-center justify-center bg-slate-50/50 overflow-y-auto">
+        <!-- Loading Overlay -->
+        <div id="dataLoader" class="absolute inset-0 bg-slate-50/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center">
+            <svg class="animate-spin h-10 w-10 text-amber-500 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="text-slate-600 font-medium">Initializing Security System...</p>
+        </div>
+
+        <div class="text-center select-none z-0 px-4">
+            <div class="flex justify-center mb-4 md:mb-6">
+                 <!-- REPLACE 'src' WITH YOUR BELROSE PLACE LOGO URL -->
+                 <img src="Belrose logo.png" alt="BelRose Place Logo" class="h-16 md:h-24 w-auto object-contain drop-shadow-sm rounded-lg">
+            </div>
+            <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold text-blue-950 tracking-tight mb-3 md:mb-4 drop-shadow-sm">BelRose Place</h1>
+            <div class="flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 text-blue-900 mb-6 md:mb-8">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 md:h-6 md:w-6 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                </svg>
+                <h2 class="text-lg md:text-xl font-medium text-center">Security Key Management Active</h2>
+            </div>
+            <p class="text-sm md:text-base text-slate-500 max-w-md mx-auto">Use the sidebar to log new keys or view the repository table.</p>
+        </div>
+    </main>
+
+    <!-- MODAL: Log Key -->
+    <div id="logKeyModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+        <!-- Backdrop -->
+        <div id="logKeyBackdrop" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm cursor-pointer"></div>
+        <!-- Modal Content -->
+        <div class="relative bg-white rounded-xl shadow-2xl w-[95%] md:w-full max-w-md overflow-hidden transform transition-all">
+            <div class="px-5 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-blue-950">Log Key Activity</h3>
+                <button id="btnCloseLogModal" class="text-slate-400 hover:text-slate-600 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="p-6">
+                <form id="checkoutForm" class="flex flex-col gap-4">
+                    <div>
+                        <label for="borrowerName" class="block text-sm font-medium text-slate-700 mb-1">Person Name <span class="text-red-500">*</span></label>
+                        <input type="text" id="borrowerName" required placeholder="e.g., John Doe" 
+                            class="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors outline-none">
+                    </div>
+                    <div>
+                        <label for="phoneNumber" class="block text-sm font-medium text-slate-700 mb-1">Phone Number</label>
+                        <input type="tel" id="phoneNumber" placeholder="e.g., +233 20 123 4567" 
+                            class="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors outline-none">
+                    </div>
+                    <div>
+                        <label for="keyName" class="block text-sm font-medium text-slate-700 mb-1">Key / Room Number <span class="text-red-500">*</span></label>
+                        <input type="text" id="keyName" required placeholder="e.g., Main Store, #004" 
+                            class="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors outline-none">
+                    </div>
+                    <div class="pt-4 flex justify-end gap-2 sm:gap-3">
+                        <button type="button" id="btnCancelLogModal" class="px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors">Cancel</button>
+                        <button type="button" id="btnTakeOut" class="bg-amber-500 hover:bg-amber-400 text-blue-950 font-bold py-2 px-3 sm:px-4 rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2 text-sm sm:text-base">
+                            Take Out Key
+                        </button>
+                        <button type="button" id="btnReturn" class="bg-blue-950 hover:bg-blue-900 text-amber-500 font-bold py-2 px-3 sm:px-4 rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2 text-sm sm:text-base">
+                            Return Key
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: View Table -->
+    <div id="viewTableModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6">
+        <!-- Backdrop -->
+        <div id="viewTableBackdrop" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm cursor-pointer"></div>
+        <!-- Modal Content -->
+        <div class="relative bg-white rounded-xl shadow-2xl w-[98%] md:w-full max-w-6xl h-[95vh] md:h-full max-h-[95vh] md:max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="px-4 py-3 md:px-6 md:py-4 border-b border-slate-200 bg-slate-50 flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-3 shrink-0">
+                <div>
+                    <h2 class="text-base md:text-lg font-bold text-slate-800">Key Logs Repository</h2>
+                    <p class="text-xs md:text-sm text-slate-500">Real-time records of all key transactions.</p>
+                </div>
+                <div class="flex items-center gap-2 md:gap-3 w-full sm:w-auto">
+                    <!-- Search Input -->
+                    <div class="relative flex-1 sm:w-64">
+                        <input type="text" id="searchInput" placeholder="Search logs..." 
+                            class="w-full pl-8 pr-3 py-1.5 md:py-2 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 absolute left-2.5 top-1/2 transform -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                    
+                    <button id="btnDownloadPdf" class="flex items-center justify-center gap-1 md:gap-2 px-2.5 py-1.5 md:px-3 md:py-2 bg-blue-950 hover:bg-blue-900 text-amber-500 text-xs md:text-sm font-bold rounded-lg transition-colors shadow-sm whitespace-nowrap">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        <span class="hidden sm:inline">Download PDF</span>
+                        <span class="sm:hidden">PDF</span>
+                    </button>
+                    <button id="btnCloseTableModal" class="text-slate-400 hover:text-slate-600 bg-slate-200 hover:bg-slate-300 p-1.5 md:p-2 rounded-full transition-colors shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="flex-1 max-h-[75vh] md:max-h-[60vh] overflow-auto custom-scrollbar p-0 w-full relative">
+                <table class="w-full text-left border-collapse min-w-[800px]">
+                    <thead class="bg-blue-950 sticky top-0 z-20 shadow-md border-b border-blue-900">
+                        <tr>
+                            <th class="px-6 py-3 text-xs font-bold text-amber-500 uppercase tracking-wider">Person Name</th>
+                            <th class="px-6 py-3 text-xs font-bold text-amber-500 uppercase tracking-wider">Phone Number</th>
+                            <th class="px-6 py-3 text-xs font-bold text-amber-500 uppercase tracking-wider">Key / Room</th>
+                            <th class="px-6 py-3 text-xs font-bold text-amber-500 uppercase tracking-wider">Time Out</th>
+                            <th class="px-6 py-3 text-xs font-bold text-amber-500 uppercase tracking-wider">Time In</th>
+                            <th class="px-6 py-3 text-xs font-bold text-amber-500 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-xs font-bold text-amber-500 uppercase tracking-wider text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="masterTableBody" class="divide-y divide-slate-100 bg-white">
+                        <!-- Data injected dynamically by JS -->
+                    </tbody>
+                </table>
+                <div id="emptyTableState" class="hidden flex-col items-center justify-center text-center p-12">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-slate-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <p class="text-slate-500 font-medium">No key records found in the system.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container for alerts -->
+    <div id="toastContainer" class="fixed bottom-5 left-1/2 transform -translate-x-1/2 z-[60] flex flex-col gap-3 pointer-events-none"></div>
+
+    <!-- Application Script (Module format) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-analytics.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js";
+
+        // ==========================================
+        // 1. CONFIGURATION
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyAajbyjC3jYiMUhlDdsd0m_IuvHgtWLdgo",
+            authDomain: "key-management-66ec5.firebaseapp.com",
+            projectId: "key-management-66ec5",
+            storageBucket: "key-management-66ec5.firebasestorage.app",
+            messagingSenderId: "595968545967",
+            appId: "1:595968545967:web:cb31024fb7c481d818705a",
+            measurementId: "G-VYPX2797N5"
+        };
+
+        const currentAppId = typeof __app_id !== 'undefined' ? __app_id : 'lamu-keys-default';
+        // Enforcing Strict Rules for collection paths
+        const COLLECTION_PATH = `artifacts/${currentAppId}/public/data/keys`;
+
+        // Initialize Firebase instances
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        // ==========================================
+        // 2. STATE MANAGEMENT
+        // ==========================================
+        const State = {
+            currentUser: null,
+            allLogs: [],
+            isSubmitting: false,
+            searchQuery: '',
+            unsubscribeLogs: null
+        };
+
+        // ==========================================
+        // 3. UI CONTROLLER (DOM Management)
+        // ==========================================
+        const DOM = {
+            // Modals
+            logKeyModal: document.getElementById('logKeyModal'),
+            viewTableModal: document.getElementById('viewTableModal'),
+            
+            // Buttons/Triggers
+            btnOpenLogModal: document.getElementById('btnOpenLogModal'),
+            btnOpenTableModal: document.getElementById('btnOpenTableModal'),
+            btnCloseLogModal: document.getElementById('btnCloseLogModal'),
+            btnCancelLogModal: document.getElementById('btnCancelLogModal'),
+            btnCloseTableModal: document.getElementById('btnCloseTableModal'),
+            logKeyBackdrop: document.getElementById('logKeyBackdrop'),
+            viewTableBackdrop: document.getElementById('viewTableBackdrop'),
+            btnTakeOut: document.getElementById('btnTakeOut'),
+            btnReturn: document.getElementById('btnReturn'),
+            btnDownloadPdf: document.getElementById('btnDownloadPdf'),
+            
+            // Form & Inputs
+            checkoutForm: document.getElementById('checkoutForm'),
+            keyName: document.getElementById('keyName'),
+            borrowerName: document.getElementById('borrowerName'),
+            phoneNumber: document.getElementById('phoneNumber'),
+            searchInput: document.getElementById('searchInput'),
+            
+            // Data Display
+            masterTableBody: document.getElementById('masterTableBody'),
+            emptyTableState: document.getElementById('emptyTableState'),
+            loader: document.getElementById('dataLoader'),
+            connStatus: document.getElementById('connectionStatus'),
+            toastContainer: document.getElementById('toastContainer'),
+            
+            // PWA
+            btnInstallApp: document.getElementById('btnInstallApp')
+        };
+
+        const UI = {
+            openModal: (modalEl) => {
+                modalEl.classList.remove('hidden');
+                document.body.classList.add('modal-open');
+                if(modalEl === DOM.logKeyModal) setTimeout(() => DOM.borrowerName.focus(), 100);
+            },
+            closeModal: (modalEl) => {
+                modalEl.classList.add('hidden');
+                document.body.classList.remove('modal-open');
+                if(modalEl === DOM.logKeyModal) DOM.checkoutForm.reset();
+            },
+            showToast: (message, type = 'success') => {
+                const toast = document.createElement('div');
+                const bgClass = type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-red-600' : 'bg-blue-600';
+                const icon = type === 'success' 
+                    ? `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />`
+                    : `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />`;
+
+                toast.className = `toast-enter ${bgClass} text-white px-4 py-3 rounded-full shadow-lg flex items-center gap-3 font-medium text-sm pointer-events-auto`;
+                toast.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">${icon}</svg><span class="flex-1 px-2">${message}</span>`;
+                
+                DOM.toastContainer.appendChild(toast);
+                requestAnimationFrame(() => { toast.classList.remove('toast-enter'); toast.classList.add('toast-enter-active'); });
+                setTimeout(() => {
+                    toast.classList.remove('toast-enter-active'); toast.classList.add('toast-exit-active');
+                    setTimeout(() => toast.remove(), 300);
+                }, 3000);
+            },
+            updateConnectionStatus: (isConnected, text = "Connected to Server") => {
+                if (isConnected) {
+                    DOM.connStatus.className = "flex items-center gap-2 text-xs text-emerald-400 bg-emerald-400/10 px-3 py-2 rounded-lg font-medium";
+                    DOM.connStatus.innerHTML = `<div class="w-2 h-2 rounded-full bg-emerald-400"></div>${text}`;
+                } else {
+                    DOM.connStatus.className = "flex items-center gap-2 text-xs text-red-400 bg-red-400/10 px-3 py-2 rounded-lg font-medium";
+                    DOM.connStatus.innerHTML = `<div class="w-2 h-2 rounded-full bg-red-400"></div>${text}`;
+                }
+            },
+            escapeHTML: (str) => {
+                if (!str) return '';
+                return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag));
+            },
+            formatDateTime: (isoString) => {
+                if (!isoString) return '<span class="text-slate-300">-</span>';
+                return new Date(isoString).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+            },
+            renderTableData: () => {
+                let filteredLogs = State.allLogs;
+                if (State.searchQuery) {
+                    filteredLogs = State.allLogs.filter(log => {
+                        return [log.borrowerName, log.phoneNumber, log.keyName, log.status]
+                            .map(f => (f || '').toLowerCase())
+                            .some(f => f.includes(State.searchQuery));
+                    });
+                }
+
+                // In-memory sorting (adhering strictly to NO complex queries rule)
+                const sortedLogs = [...filteredLogs].sort((a, b) => {
+                    if (a.status === 'Taken Out' && b.status !== 'Taken Out') return -1;
+                    if (a.status !== 'Taken Out' && b.status === 'Taken Out') return 1;
+                    return a.status === 'Taken Out' 
+                        ? new Date(b.timeOut) - new Date(a.timeOut) 
+                        : new Date(b.timeIn) - new Date(a.timeIn);
+                });
+                
+                if (sortedLogs.length === 0) {
+                    DOM.masterTableBody.innerHTML = '';
+                    DOM.emptyTableState.classList.remove('hidden');
+                    DOM.emptyTableState.classList.add('flex');
+                    DOM.emptyTableState.querySelector('p').textContent = State.searchQuery ? `No records found matching "${State.searchQuery}".` : "No key records found in the system.";
+                } else {
+                    DOM.emptyTableState.classList.add('hidden');
+                    DOM.emptyTableState.classList.remove('flex');
+                    DOM.masterTableBody.innerHTML = sortedLogs.map(log => {
+                        const isOut = log.status === 'Taken Out';
+                        const statusBadge = isOut 
+                            ? `<span class="bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full text-xs font-bold border border-amber-200">TAKEN OUT</span>`
+                            : `<span class="bg-blue-100 text-blue-800 px-2.5 py-1 rounded-full text-xs font-bold border border-blue-200">RETURNED</span>`;
+                            
+                        // Use a data attribute instead of onclick
+                        const actionButton = isOut
+                            ? `<button data-action="return" data-id="${log.id}" class="px-3 py-1.5 bg-blue-950 hover:bg-blue-900 text-amber-500 text-xs font-bold rounded shadow-sm transition-colors action-btn">Mark Returned</button>`
+                            : `<span class="text-xs text-slate-400 italic px-2">Completed</span>`;
+
+                        return `
+                        <tr class="hover:bg-slate-50 transition-colors border-b border-slate-50">
+                            <td class="px-6 py-4 whitespace-nowrap"><div class="font-medium text-slate-800">${UI.escapeHTML(log.borrowerName)}</div></td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">${UI.escapeHTML(log.phoneNumber || '-')}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800">${UI.escapeHTML(log.keyName)}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">${UI.formatDateTime(log.timeOut)}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">${UI.formatDateTime(log.timeIn)}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">${statusBadge}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right">${actionButton}</td>
+                        </tr>`
+                    }).join('');
+                }
+            }
+        };
+
+        // ==========================================
+        // 4. FIREBASE DATA LAYER
+        // ==========================================
+        const FirebaseDB = {
+            initialize: async () => {
+                try {
+                    // Try to authenticate, but fallback gracefully if disabled in Firebase console
+                    try {
+                        await signInAnonymously(auth);
+                        State.currentUser = auth.currentUser;
+                    } catch (authError) {
+                        console.warn("Anonymous auth is disabled in Firebase console. Proceeding without auth.", authError);
+                        State.currentUser = { uid: "unauthenticated-user" }; // Fallback dummy user
+                    }
+                    UI.updateConnectionStatus(true);
+                    FirebaseDB.setupRealtimeListener();
+                } catch (error) {
+                    console.error("Firebase Init Error:", error);
+                    UI.updateConnectionStatus(false, "Connection Failed");
+                    DOM.loader.classList.add('hidden');
+                    UI.showToast("Failed to connect to database.", "error");
+                }
+            },
+            setupRealtimeListener: () => {
+                if (!State.currentUser) return;
+                
+                // Strict Rule: Simple collection queries only, no complex where/orderBy
+                State.unsubscribeLogs = onSnapshot(collection(db, COLLECTION_PATH), 
+                    (snapshot) => {
+                        State.allLogs = [];
+                        snapshot.forEach((doc) => State.allLogs.push({ id: doc.id, ...doc.data() }));
+                        if (!DOM.loader.classList.contains('hidden')) DOM.loader.classList.add('hidden');
+                        UI.renderTableData();
+                    }, 
+                    (error) => {
+                        console.error("Snapshot error:", error);
+                        UI.updateConnectionStatus(false, "Sync Error");
+                        UI.showToast("Error syncing data.", "error");
+                    }
+                );
+            },
+            logKey: async (action, logData) => {
+                const now = new Date().toISOString(); // Using ISO strings to sort natively in JS
+                const newLog = {
+                    ...logData,
+                    timeOut: action === 'Taken Out' ? now : null,
+                    timeIn: action === 'Returned' ? now : null,
+                    status: action,
+                    createdBy: State.currentUser.uid
+                };
+                await addDoc(collection(db, COLLECTION_PATH), newLog);
+            },
+            updateKeyStatus: async (docId, status) => {
+                const docRef = doc(db, COLLECTION_PATH, docId);
+                await updateDoc(docRef, { status, timeIn: new Date().toISOString() });
+            }
+        };
+
+        // ==========================================
+        // 5. EXPORT SERVICES
+        // ==========================================
+        const ExportService = {
+            downloadPDF: () => {
+                if (!State.allLogs || State.allLogs.length === 0) {
+                    UI.showToast("No data to download.", "error");
+                    return;
+                }
+                try {
+                    const { jsPDF } = window.jspdf;
+                    const doc = new jsPDF();
+
+                    const sortedLogs = [...State.allLogs].sort((a, b) => {
+                        if (a.status === 'Taken Out' && b.status !== 'Taken Out') return -1;
+                        if (a.status !== 'Taken Out' && b.status === 'Taken Out') return 1;
+                        return a.status === 'Taken Out' ? new Date(b.timeOut) - new Date(a.timeOut) : new Date(b.timeIn) - new Date(a.timeIn);
+                    });
+
+                    const getRawDate = (iso) => iso ? new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : '-';
+
+                    const tableData = sortedLogs.map(log => [
+                        log.borrowerName || '', log.phoneNumber || '-', log.keyName || '',
+                        getRawDate(log.timeOut), getRawDate(log.timeIn), log.status || ''
+                    ]);
+
+                    doc.setFontSize(14); doc.setTextColor(23, 37, 84); // blue-950
+                    doc.text("BelRose Place - Key Management Log", 14, 15);
+                    doc.setFontSize(10); doc.setTextColor(245, 158, 11); // amber-500
+                    doc.text("Managed by DKB Anchor Security Services Ltd", 14, 21);
+                    
+                    doc.autoTable({
+                        startY: 26, head: [['Person Name', 'Phone Number', 'Key / Room', 'Time Out', 'Time In', 'Status']],
+                        body: tableData, theme: 'grid', styles: { fontSize: 9 },
+                        headStyles: { fillColor: [23, 37, 84], textColor: [245, 158, 11] },
+                        alternateRowStyles: { fillColor: [248, 250, 252] }
+                    });
+
+                    doc.save('BelRose_Place_Key_Logs.pdf');
+                    UI.showToast("PDF downloaded successfully.");
+                } catch (error) {
+                    console.error("PDF Generation Error:", error);
+                    UI.showToast("Failed to generate PDF.", "error");
+                }
+            }
+        };
+
+        // ==========================================
+        // 6. PWA INSTALLATION LAYER
+        // ==========================================
+        const PWA = {
+            deferredPrompt: null,
+            init: () => {
+                // Generate Manifest dynamically
+                const manifestJSON = {
+                    "name": "BelRose Place Key Management",
+                    "short_name": "BelRose Keys",
+                    "description": "Security Key Management System by DKB Anchor Security.",
+                    "start_url": window.location.href,
+                    "display": "standalone",
+                    "background_color": "#f1f5f9",
+                    "theme_color": "#172554",
+                    "icons": [
+                        {
+                            "src": "logo.jpeg",
+                            "sizes": "192x192",
+                            "type": "image/png"
+                        },
+                        {
+                            "src": "logo.jpeg",
+                            "sizes": "512x512",
+                            "type": "image/png"
+                        }
+                    ]
+                };
+                
+                const blob = new Blob([JSON.stringify(manifestJSON)], {type: 'application/json'});
+                const manifestURL = URL.createObjectURL(blob);
+                document.getElementById('manifest-placeholder').setAttribute('href', manifestURL);
+
+                // Handle Install Prompt natively
+                window.addEventListener('beforeinstallprompt', (e) => {
+                    e.preventDefault();
+                    PWA.deferredPrompt = e;
+                    // Unhide the install button in the sidebar
+                    DOM.btnInstallApp.classList.remove('hidden');
+                });
+
+                DOM.btnInstallApp.addEventListener('click', async () => {
+                    if (PWA.deferredPrompt) {
+                        PWA.deferredPrompt.prompt();
+                        const { outcome } = await PWA.deferredPrompt.userChoice;
+                        if (outcome === 'accepted') {
+                            DOM.btnInstallApp.classList.add('hidden');
+                        }
+                        PWA.deferredPrompt = null;
+                    }
+                });
+
+                window.addEventListener('appinstalled', () => {
+                    DOM.btnInstallApp.classList.add('hidden');
+                    UI.showToast("App installed successfully!", "success");
+                });
+            }
+        };
+
+        // ==========================================
+        // 7. EVENT BINDING
+        // ==========================================
+        
+        // Form Submission Logic
+        const handleKeyLogSubmit = async (action) => {
+            if (!State.currentUser || State.isSubmitting) return;
+            if (!DOM.checkoutForm.checkValidity()) { DOM.checkoutForm.reportValidity(); return; }
+
+            State.isSubmitting = true;
+            DOM.btnTakeOut.disabled = true; DOM.btnReturn.disabled = true;
+            const activeBtn = action === 'Taken Out' ? DOM.btnTakeOut : DOM.btnReturn;
+            const originalText = activeBtn.innerHTML;
+            activeBtn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Logging...`;
+
+            try {
+                const logData = {
+                    borrowerName: DOM.borrowerName.value.trim(),
+                    phoneNumber: DOM.phoneNumber.value.trim(),
+                    keyName: DOM.keyName.value.trim()
+                };
+                await FirebaseDB.logKey(action, logData);
+                UI.showToast(`Key successfully logged as ${action} for ${logData.borrowerName}.`);
+                UI.closeModal(DOM.logKeyModal);
+            } catch (error) {
+                console.error("Checkout error:", error);
+                UI.showToast("Failed to log key.", "error");
+            } finally {
+                State.isSubmitting = false;
+                DOM.btnTakeOut.disabled = false; DOM.btnReturn.disabled = false;
+                activeBtn.innerHTML = originalText;
+            }
+        };
+
+        // Utility for Search
+        function debounce(func, wait) {
+            let timeout;
+            return (...args) => {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func(...args), wait);
+            };
+        }
+
+        // Attach Listeners
+        window.addEventListener('DOMContentLoaded', () => {
+            // App Initialization
+            FirebaseDB.initialize();
+            PWA.init();
+
+            // Modals Logic
+            DOM.btnOpenLogModal.addEventListener('click', () => UI.openModal(DOM.logKeyModal));
+            DOM.btnOpenTableModal.addEventListener('click', () => UI.openModal(DOM.viewTableModal));
+            DOM.btnCloseLogModal.addEventListener('click', () => UI.closeModal(DOM.logKeyModal));
+            DOM.btnCancelLogModal.addEventListener('click', () => UI.closeModal(DOM.logKeyModal));
+            DOM.logKeyBackdrop.addEventListener('click', () => UI.closeModal(DOM.logKeyModal));
+            
+            DOM.btnCloseTableModal.addEventListener('click', () => UI.closeModal(DOM.viewTableModal));
+            DOM.viewTableBackdrop.addEventListener('click', () => UI.closeModal(DOM.viewTableModal));
+
+            // Prevent default form submit (handled via buttons)
+            DOM.checkoutForm.addEventListener('submit', (e) => e.preventDefault());
+
+            // Action Buttons
+            DOM.btnTakeOut.addEventListener('click', () => handleKeyLogSubmit('Taken Out'));
+            DOM.btnReturn.addEventListener('click', () => handleKeyLogSubmit('Returned'));
+            DOM.btnDownloadPdf.addEventListener('click', ExportService.downloadPDF);
+
+            // Dynamic Search
+            DOM.searchInput.addEventListener('input', debounce((e) => {
+                State.searchQuery = e.target.value.toLowerCase();
+                UI.renderTableData();
+            }, 300));
+
+            // Delegated Event Listener for Table Rows (Mark Returned Buttons)
+            DOM.masterTableBody.addEventListener('click', async (e) => {
+                const btn = e.target.closest('.action-btn');
+                if (!btn) return;
+                
+                const action = btn.getAttribute('data-action');
+                const docId = btn.getAttribute('data-id');
+
+                if (action === 'return' && State.currentUser) {
+                    try {
+                        const originalText = btn.innerHTML;
+                        btn.innerHTML = 'Updating...';
+                        btn.disabled = true;
+                        
+                        await FirebaseDB.updateKeyStatus(docId, 'Returned');
+                        UI.showToast("Key successfully marked as returned.", "success");
+                    } catch (error) {
+                        console.error("Return error:", error);
+                        UI.showToast("Failed to return key.", "error");
+                        btn.innerHTML = originalText;
+                        btn.disabled = false;
+                    }
+                }
+            });
+        });
+
+    </script>
+</body>
+</html>
