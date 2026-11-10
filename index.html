@@ -64,7 +64,7 @@
                     </svg>
                     VIEW TABLE
                 </button>
-                <button id="btnInstallApp" class="hidden flex-1 md:w-full flex items-center justify-center md:justify-start gap-2 md:gap-3 px-3 md:px-4 py-2.5 md:py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors font-bold text-sm md:text-base whitespace-nowrap mt-auto">
+                <button id="btnInstallApp" class="flex-1 md:w-full flex items-center justify-center md:justify-start gap-2 md:gap-3 px-3 md:px-4 py-2.5 md:py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors font-bold text-sm md:text-base whitespace-nowrap mt-auto">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                     </svg>
@@ -538,8 +538,6 @@
                 window.addEventListener('beforeinstallprompt', (e) => {
                     e.preventDefault();
                     PWA.deferredPrompt = e;
-                    // Unhide the install button in the sidebar
-                    DOM.btnInstallApp.classList.remove('hidden');
                 });
 
                 DOM.btnInstallApp.addEventListener('click', async () => {
@@ -550,6 +548,9 @@
                             DOM.btnInstallApp.classList.add('hidden');
                         }
                         PWA.deferredPrompt = null;
+                    } else {
+                        // Fallback for iframe environments or iOS where beforeinstallprompt doesn't fire
+                        UI.showToast("To install, open your browser menu and select 'Add to Home Screen'.", "blue");
                     }
                 });
 
