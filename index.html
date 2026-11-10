@@ -507,6 +507,11 @@
         const PWA = {
             deferredPrompt: null,
             init: () => {
+                // Check if already installed and running in standalone mode
+                if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+                    DOM.btnInstallApp.classList.add('hidden');
+                }
+
                 // Handle Install Prompt natively
                 window.addEventListener('beforeinstallprompt', (e) => {
                     e.preventDefault();
