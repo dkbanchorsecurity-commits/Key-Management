@@ -361,13 +361,11 @@
                     });
                 }
 
-                // In-memory sorting (adhering strictly to NO complex queries rule)
+                // Strictly chronological sort: Newest activity at the top
                 const sortedLogs = [...filteredLogs].sort((a, b) => {
-                    if (a.status === 'Taken Out' && b.status !== 'Taken Out') return -1;
-                    if (a.status !== 'Taken Out' && b.status === 'Taken Out') return 1;
-                    return a.status === 'Taken Out' 
-                        ? new Date(b.timeOut) - new Date(a.timeOut) 
-                        : new Date(b.timeIn) - new Date(a.timeIn);
+                    const timeA = new Date(a.timeIn || a.timeOut).getTime();
+                    const timeB = new Date(b.timeIn || b.timeOut).getTime();
+                    return timeB - timeA;
                 });
                 
                 if (sortedLogs.length === 0) {
@@ -475,10 +473,11 @@
                     const { jsPDF } = window.jspdf;
                     const doc = new jsPDF();
 
+                    // Apply the same strict chronological sort for the PDF
                     const sortedLogs = [...State.allLogs].sort((a, b) => {
-                        if (a.status === 'Taken Out' && b.status !== 'Taken Out') return -1;
-                        if (a.status !== 'Taken Out' && b.status === 'Taken Out') return 1;
-                        return a.status === 'Taken Out' ? new Date(b.timeOut) - new Date(a.timeOut) : new Date(b.timeIn) - new Date(a.timeIn);
+                        const timeA = new Date(a.timeIn || a.timeOut).getTime();
+                        const timeB = new Date(b.timeIn || b.timeOut).getTime();
+                        return timeB - timeA;
                     });
 
                     const getRawDate = (iso) => iso ? new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : '-';
